@@ -1,0 +1,262 @@
+loadstring(game:HttpGet('https://raw.githubusercontent.com/EdgeIY/infiniteyield/master/source'))()
+
+loadstring(game:HttpGet("https://rawscripts.net/raw/Universal-Script-KATERHUB-6696"))()
+
+--// Services
+local Players = game:GetService("Players")
+local UserInputService = game:GetService("UserInputService")
+local TweenService = game:GetService("TweenService")
+local RunService = game:GetService("RunService")
+local Workspace = game:GetService("Workspace")
+
+--// Variables
+local player = Players.LocalPlayer
+local camera = Workspace.CurrentCamera
+local gui = Instance.new("ScreenGui")
+gui.ResetOnSpawn = false -- ✅ GUI persists after death
+gui.Parent = player:WaitForChild("PlayerGui")
+
+local frame = Instance.new("Frame")
+local title = Instance.new("TextLabel")
+local silentAimToggle = Instance.new("TextButton")
+local teleportToggle = Instance.new("TextButton")
+local antiGrabToggle = Instance.new("TextButton")
+local notesButton = Instance.new("TextButton")
+local notesFrame = Instance.new("Frame")
+local notesLabel = Instance.new("TextLabel")
+local closeNotes = Instance.new("TextButton")
+
+local holdingQ = false
+local silentAimActive = false
+local teleportEnabled = false
+local antiGrabEnabled = false
+
+--// UI Setup
+frame.Size = UDim2.new(0, 200, 0, 150)
+frame.Position = UDim2.new(0.05, 0, 0.3, 0)
+frame.BackgroundColor3 = Color3.fromRGB(15, 15, 15)
+frame.BorderSizePixel = 0
+frame.Visible = false
+frame.BackgroundTransparency = 1
+frame.Active = true
+frame.Draggable = true
+frame.Parent = gui
+
+-- Fade-in Animation
+local tween = TweenService:Create(frame, TweenInfo.new(1, Enum.EasingStyle.Quad, Enum.EasingDirection.Out), {BackgroundTransparency = 0})
+frame.Visible = true
+tween:Play()
+
+title.Size = UDim2.new(1, 0, 0, 25)
+title.BackgroundColor3 = Color3.fromRGB(25, 25, 25)
+title.TextColor3 = Color3.fromRGB(0, 255, 0)
+title.Text = "FEDORAHUB"
+title.Font = Enum.Font.GothamBold
+title.TextSize = 16
+title.Parent = frame
+
+-- Function to create toggle buttons
+local function createToggleButton(text, pos, parent)
+    local button = Instance.new("TextButton")
+    button.Size = UDim2.new(1, -20, 0, 30)
+    button.Position = UDim2.new(0, 10, 0, pos)
+    button.BackgroundColor3 = Color3.fromRGB(30, 30, 30)
+    button.TextColor3 = Color3.fromRGB(0, 255, 0)
+    button.Text = text .. " [OFF]"
+    button.Font = Enum.Font.Gotham
+    button.TextSize = 14
+    button.Parent = parent
+    return button
+end
+
+silentAimToggle = createToggleButton("Silent Aim", 30, frame)
+teleportToggle = createToggleButton("Teleport", 65, frame)
+antiGrabToggle = createToggleButton("Anti Grab", 100, frame)
+
+-- Notes Button
+notesButton.Size = UDim2.new(0, 20, 0, 20)
+notesButton.Position = UDim2.new(1, -25, 1, -25)
+notesButton.BackgroundColor3 = Color3.fromRGB(50, 50, 50)
+notesButton.TextColor3 = Color3.fromRGB(0, 255, 0)
+notesButton.Text = ">"
+notesButton.Font = Enum.Font.Gotham
+notesButton.TextSize = 16
+notesButton.Parent = frame
+
+-- Notes Frame (Fixed Slide)
+notesFrame.Size = UDim2.new(0, 150, 0, 100)
+notesFrame.Position = UDim2.new(1, 5, 0, 0)
+notesFrame.BackgroundColor3 = Color3.fromRGB(20, 20, 20)
+notesFrame.Visible = false
+notesFrame.Parent = frame
+
+notesLabel.Size = UDim2.new(1, -10, 1, -20)
+notesLabel.Position = UDim2.new(0, 5, 0, 5)
+notesLabel.TextColor3 = Color3.fromRGB(0, 255, 0)
+notesLabel.Text = "KEYBINDS:\n- Q: Silent Aim (Hold)\n- F: Teleport Forward\n- Anti-Grab: Always On When Enabled\n\nEXTRAS:\n- Inf Yield God Mode\n- Loopgoto\n- WalkFling"
+notesLabel.Font = Enum.Font.Gotham
+notesLabel.TextSize = 12
+notesLabel.TextWrapped = true
+notesLabel.Parent = notesFrame
+
+closeNotes.Size = UDim2.new(1, 0, 0, 20)
+closeNotes.Position = UDim2.new(0, 0, 1, -20)
+closeNotes.BackgroundColor3 = Color3.fromRGB(30, 30, 30)
+closeNotes.TextColor3 = Color3.fromRGB(0, 255, 0)
+closeNotes.Text = "<"
+closeNotes.Font = Enum.Font.Gotham
+closeNotes.TextSize = 16
+closeNotes.Parent = notesFrame
+
+-- Notes Toggle (Now Fully Works)
+notesButton.MouseButton1Click:Connect(function()
+    notesFrame.Visible = not notesFrame.Visible
+end)
+
+closeNotes.MouseButton1Click:Connect(function()
+    notesFrame.Visible = false
+end)
+
+-- Silent Aim (Fixed Again)
+silentAimToggle.MouseButton1Click:Connect(function()
+    silentAimActive = not silentAimActive
+    silentAimToggle.Text = silentAimActive and "Silent Aim [ON]" or "Silent Aim [OFF]"
+end)
+
+UserInputService.InputBegan:Connect(function(input, gameProcessed)
+    if input.KeyCode == Enum.KeyCode.Q and silentAimActive and not gameProcessed then
+        holdingQ = true
+    end
+end)
+
+UserInputService.InputEnded:Connect(function(input)
+    if input.KeyCode == Enum.KeyCode.Q then
+        holdingQ = false
+    end
+end)
+
+RunService.RenderStepped:Connect(function()
+    if holdingQ and silentAimActive then
+        local target = nil
+        local closestDist = math.huge
+        local myPos = camera.CFrame.Position
+        
+        for _, p in pairs(Players:GetPlayers()) do
+            if p ~= player and p.Character and p.Character:FindFirstChild("HumanoidRootPart") then
+                local charPos = p.Character.HumanoidRootPart.Position
+                local distance = (myPos - charPos).Magnitude
+                
+                if distance < closestDist then
+                    target = p
+                    closestDist = distance
+                end
+            end
+        end
+        
+        if target and target.Character then
+            local targetPos = target.Character.HumanoidRootPart.Position
+            camera.CFrame = CFrame.new(camera.CFrame.Position, targetPos)
+        end
+    end
+end)
+
+-- Anti-Grab (Fixed)
+antiGrabToggle.MouseButton1Click:Connect(function()
+    antiGrabEnabled = not antiGrabEnabled
+    antiGrabToggle.Text = antiGrabEnabled and "Anti Grab [ON]" or "Anti Grab [OFF]"
+end)
+
+RunService.Heartbeat:Connect(function()
+    if antiGrabEnabled and player.Character then
+        local root = player.Character:FindFirstChild("HumanoidRootPart")
+        if root then
+            root.AssemblyLinearVelocity = Vector3.new()
+            root.AssemblyAngularVelocity = Vector3.new()
+        end
+    end
+end)
+
+-- Teleport (Fixed)
+teleportToggle.MouseButton1Click:Connect(function()
+    teleportEnabled = not teleportEnabled
+    teleportToggle.Text = teleportEnabled and "Teleport [ON]" or "Teleport [OFF]"
+end)
+
+UserInputService.InputBegan:Connect(function(input, gameProcessed)
+    if input.KeyCode == Enum.KeyCode.F and teleportEnabled and not gameProcessed then
+        local root = player.Character and player.Character:FindFirstChild("HumanoidRootPart")
+        if root then
+            root.CFrame = root.CFrame + root.CFrame.LookVector * 20
+        end
+    end
+end)
+
+print("✅ FEDORAHUB Loaded Successfully!")
+
+local PS = game:GetService("Players")
+local Player = PS.LocalPlayer
+local Character = Player.Character or Player.CharacterAdded:Wait()
+local RS = game:GetService("ReplicatedStorage")
+local CE = RS:WaitForChild("CharacterEvents")
+local R = game:GetService("RunService")
+local BeingHeld = Player:WaitForChild("IsHeld")
+local PlayerScripts = Player:WaitForChild("PlayerScripts")
+
+--[[ Remotes ]]
+local StruggleEvent = CE:WaitForChild("Struggle")
+
+--[[ Anti-Explosion ]]
+workspace.DescendantAdded:Connect(function(v)
+    if v:IsA("Explosion") then
+        v.BlastPressure = 0
+    end
+end)
+
+-- Track the initial position
+local initialPosition = Character.HumanoidRootPart.Position
+
+--[[ Anti-grab ]]
+BeingHeld.Changed:Connect(function(C)
+    if C == true then
+        local char = Player.Character
+
+        if BeingHeld.Value == true then
+            -- Continuous check using HeartBeat for zero-delay effect
+            local heartbeatConnection
+            heartbeatConnection = R.Heartbeat:Connect(function()
+                if BeingHeld.Value == false then
+                    heartbeatConnection:Disconnect()
+                    return
+                end
+
+                -- Forcefully reset position, linear velocity, and angular velocity
+                local humanoidRootPart = char:WaitForChild("HumanoidRootPart")
+                humanoidRootPart.CFrame = CFrame.new(initialPosition)  -- Snap back instantly
+                humanoidRootPart.AssemblyLinearVelocity = Vector3.new()  -- Stop all linear movement
+                humanoidRootPart.AssemblyAngularVelocity = Vector3.new()  -- Stop all rotation
+
+                -- Fire the struggle event to resist the grab
+                StruggleEvent:FireServer(Player)
+            end)
+        end
+    end
+end)
+
+--[[ Prevent being seated in a specific condition ]]
+Player.CharacterAdded:Connect(function(char)
+    char:FindFirstChildOfClass("Humanoid").Changed:Connect(function(C)
+        if C == "Sit" and char.Humanoid.Sit == true then
+            if char.Humanoid.SeatPart ~= nil and tostring(char.Humanoid.SeatPart.Parent) == "CreatureBlobman" then
+            elseif char.Humanoid.SeatPart == nil then
+                char.Humanoid:SetStateEnabled(Enum.HumanoidStateType.Jumping, true)
+                char.Humanoid.Sit = false
+            end
+        end
+    end)
+end)
+
+-- Track position again when character respawns
+Player.CharacterAdded:Connect(function()
+    Character = Player.Character or Player.CharacterAdded:Wait()
+    initialPosition = Character.HumanoidRootPart.Position
+end)
