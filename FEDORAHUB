@@ -261,3 +261,65 @@ Player.CharacterAdded:Connect(function()
     initialPosition = Character.HumanoidRootPart.Position
 end)
 
+local RunService = game:GetService("RunService")
+local player = game.Players.LocalPlayer
+local strength = 350
+local maxDistance = 40
+local isEnabled = false -- Track whether the feature is enabled or not
+
+-- Get the player's character and humanoid
+local character = player.Character or player.CharacterAdded:Wait()
+local humanoid = character:WaitForChild("Humanoid")
+
+-- Function to execute the provided code
+local function ExecuteCode(otherTorso)
+    game:GetService("ReplicatedStorage").GrabEvents.SetNetworkOwner:FireServer(otherTorso, otherTorso.CFrame)
+    local velocityObj = Instance.new("BodyVelocity", otherTorso)
+
+    print("Launched!")
+    velocityObj.MaxForce = Vector3.new(math.huge, math.huge, math.huge)
+    velocityObj.Velocity = Vector3.new(90, strength, 90)
+
+    wait(0.5) -- Wait for half a second before destroying the BodyVelocity object
+    velocityObj:Destroy()
+end
+
+-- Toggle the ability on and off with the "P" key
+game:GetService("UserInputService").InputBegan:Connect(function(input)
+    if input.KeyCode == Enum.KeyCode.P then
+        isEnabled = not isEnabled -- Toggle the enabled state
+        print(isEnabled and "Effect enabled" or "Effect disabled")
+    end
+end)
+
+-- Main loop
+while true do
+    if isEnabled then
+        -- Find all players within the specified distance
+        local players = game.Players:GetPlayers()
+        for _, otherPlayer in ipairs(players) do
+            -- Skip the local player
+            if otherPlayer ~= player then
+                -- Get the other player's character and torso
+                local otherCharacter = otherPlayer.Character
+                if otherCharacter then
+                    local otherTorso = otherCharacter:FindFirstChild("Torso")
+                    if otherTorso then
+                        -- Calculate the distance between the players
+                        local distance = (otherTorso.Position - humanoid.RootPart.Position).Magnitude
+
+                        -- Check if the distance is within the specified range
+                        if distance <= maxDistance then
+                            -- Execute the provided code for each player
+                            ExecuteCode(otherTorso)
+                        end
+                    end
+                end
+            end
+        end
+    end
+
+    RunService.Heartbeat:Wait()
+end
+
+-- AURA THROW CAN BE TOGGLED OFF & ON WITH "P" THERE IS NO GUI.
